@@ -1,5 +1,7 @@
-import gleam/io
+import glutenberg/client
+import glutenberg/database
+import lustre
 
 pub fn main() {
-  io.println("Hello from glutenberg!")
+  lustre.start(client.app(), "#app", database.init())
 }
