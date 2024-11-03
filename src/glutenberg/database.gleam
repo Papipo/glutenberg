@@ -2,7 +2,7 @@ import gleam/dict.{type Dict}
 import gleam/int
 import gleam/list
 import gleam/option.{type Option, None, Some}
-import gleam/regex.{type Regex}
+import gleam/regex
 import gleam/set.{type Set}
 import gleam/string
 import glevenshtein
@@ -50,17 +50,33 @@ pub fn init() {
   |> Database(index: index_from_list(books))
 }
 
-pub fn regex(database: Database, query: Regex) -> List(String) {
-  let results: Dict(BookId, Score) = dict.new()
+pub fn regex(
+  database: Database,
+  query: String,
+  case_insensitive: Bool,
+) -> Result(List(String), String) {
+  let query =
+    regex.compile(
+      query,
+      regex.Options(case_insensitive: case_insensitive, multi_line: False),
+    )
 
-  database.books
-  |> dict.fold(results, fn(results, book_id, book) {
-    case regex.check(query, book.title) {
-      False -> results
-      True -> dict.insert(results, book_id, 0)
+  case query {
+    Error(_e) -> Error("Invalid regular expression")
+    Ok(re) -> {
+      let results: Dict(BookId, Score) = dict.new()
+
+      database.books
+      |> dict.fold(results, fn(results, book_id, book) {
+        case regex.check(re, book.title) {
+          False -> results
+          True -> dict.insert(results, book_id, 0)
+        }
+      })
+      |> to_list(database)
+      |> Ok
     }
-  })
-  |> to_list(database)
+  }
 }
 
 pub fn fuzzy(database: Database, query: String) -> List(String) {

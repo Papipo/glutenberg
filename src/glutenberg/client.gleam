@@ -1,5 +1,6 @@
+import gleam/bool
 import gleam/list
-import gleam/regex
+import gleam/option.{type Option, None, Some}
 import glutenberg/database.{type Database}
 import lustre
 import lustre/attribute
@@ -9,14 +10,23 @@ import lustre/element/html
 import lustre/event
 
 pub type Model {
-  Model(database: Database, results: List(String), mode: Mode)
+  Model(
+    database: Database,
+    query: String,
+    results: List(String),
+    mode: Mode,
+    case_insensitive: Bool,
+    error: Option(String),
+  )
 }
 
 pub type Msg {
   Search(query: String)
   SelectMode(mode: String)
+  CaseInsensitiveClicked(String)
 
   SetResults(results: List(String))
+  SetError(e: String)
 }
 
 pub opaque type Mode {
@@ -29,22 +39,41 @@ pub fn app() {
 }
 
 fn init(database: Database) {
-  #(Model(database, [], mode: RegEx), effect.none())
+  #(
+    Model(
+      database,
+      query: "",
+      results: [],
+      mode: RegEx,
+      case_insensitive: False,
+      error: None,
+    ),
+    effect.none(),
+  )
 }
 
 fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
+  let model = Model(..model, error: None)
   case msg {
-    Search(query) ->
+    Search(query) -> {
+      let model = Model(..model, query: query)
       case model.mode {
-        Fuzzy -> #(model, fuzzy(model, query))
-        RegEx -> #(model, regex(model, query))
+        Fuzzy -> #(model, fuzzy(model))
+        RegEx -> #(model, regex(model))
       }
+    }
     SelectMode(mode) -> {
       let mode = mode_from_string(mode)
       #(Model(..model, mode: mode, results: []), effect.none())
     }
+    CaseInsensitiveClicked(_) -> {
+      let model =
+        Model(..model, case_insensitive: model.case_insensitive |> bool.negate)
+      #(model, regex(model))
+    }
 
     SetResults(results) -> #(Model(..model, results: results), effect.none())
+    SetError(e) -> #(Model(..model, error: Some(e)), effect.none())
   }
 }
 
@@ -70,10 +99,17 @@ fn view(model: Model) {
                 )
               }),
           ),
+          case_selector(model),
           html.input([
             attribute.class(
               "flex-none border border-teal-500 w-full p-3 rounded",
             ),
+            attribute.classes([
+              #(
+                "ring-offset-1 ring-4 ring-rose-800",
+                model.error |> option.is_some,
+              ),
+            ]),
             attribute.placeholder("Search..."),
             attribute.type_("text"),
             event.on_input(Search),
@@ -100,25 +136,36 @@ fn result(item: String) {
   html.div([attribute.class("p-2")], [html.text(item)])
 }
 
-fn regex(model: Model, string) -> Effect(Msg) {
-  let query = regex.from_string(string)
-
-  case query {
-    Error(_query) -> effect.none()
-    Ok(query) -> {
-      use dispatch <- effect.from()
-      model.database
-      |> database.regex(query)
-      |> SetResults
-      |> dispatch
-    }
+fn case_selector(model: Model) {
+  case model.mode {
+    Fuzzy -> element.none()
+    RegEx ->
+      html.div([attribute.class("w-full flex flext-start gap-2")], [
+        html.input([
+          attribute.type_("checkbox"),
+          attribute.checked(model.case_insensitive),
+          event.on_input(CaseInsensitiveClicked),
+        ]),
+        html.text("Case insensitive"),
+      ])
   }
 }
 
-fn fuzzy(model: Model, query: String) -> Effect(Msg) {
+fn regex(model: Model) -> Effect(Msg) {
+  use dispatch <- effect.from()
+  case
+    model.database
+    |> database.regex(model.query, model.case_insensitive)
+  {
+    Error(e) -> e |> SetError |> dispatch
+    Ok(results) -> results |> SetResults |> dispatch
+  }
+}
+
+fn fuzzy(model: Model) -> Effect(Msg) {
   use dispatch <- effect.from()
   model.database
-  |> database.fuzzy(query)
+  |> database.fuzzy(model.query)
   |> SetResults
   |> dispatch
 }
