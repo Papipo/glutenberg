@@ -109,15 +109,18 @@ fn regex(model: Model, string) -> Effect(Msg) {
       use dispatch <- effect.from()
       model.database
       |> database.regex(query)
-      |> database.to_list
       |> SetResults
       |> dispatch
     }
   }
 }
 
-fn fuzzy(_model, _string) -> Effect(Msg) {
-  effect.none()
+fn fuzzy(model: Model, query: String) -> Effect(Msg) {
+  use dispatch <- effect.from()
+  model.database
+  |> database.fuzzy(query)
+  |> SetResults
+  |> dispatch
 }
 
 fn mode_from_string(mode: String) -> Mode {

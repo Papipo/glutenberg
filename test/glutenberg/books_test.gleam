@@ -13,21 +13,40 @@ pub fn regex_find_test() {
 
   db
   |> database.regex(regex)
-  |> database.to_list
   |> should.equal(["At the mountains of madness"])
 
   let assert Ok(regex) = regex.from_string("The")
 
   db
   |> database.regex(regex)
-  |> database.to_list
   |> should.equal(["The call of Cthulhu", "The shadow over Innsmouth"])
 
   let assert Ok(regex) = regex.from_string("[Tt]he")
 
   db
   |> database.regex(regex)
-  |> database.to_list
+  |> should.equal([
+    "The call of Cthulhu", "At the mountains of madness",
+    "The shadow over Innsmouth",
+  ])
+}
+
+pub fn fuzzy_find_test() {
+  let db = database.init()
+
+  db
+  |> database.fuzzy("mour")
+  |> should.equal(["At the mountains of madness", "The shadow over Innsmouth"])
+
+  db
+  |> database.fuzzy("mour cal")
+  |> should.equal([
+    "At the mountains of madness", "The shadow over Innsmouth",
+    "The call of Cthulhu",
+  ])
+
+  db
+  |> database.fuzzy("mour call")
   |> should.equal([
     "The call of Cthulhu", "At the mountains of madness",
     "The shadow over Innsmouth",
