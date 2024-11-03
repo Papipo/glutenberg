@@ -9,12 +9,19 @@ import lustre/element/html
 import lustre/event
 
 pub type Model {
-  Model(database: Database, results: List(String))
+  Model(database: Database, results: List(String), mode: Mode)
 }
 
 pub type Msg {
   Search(query: String)
+  SelectMode(mode: String)
+
   SetResults(results: List(String))
+}
+
+pub opaque type Mode {
+  RegEx
+  Fuzzy
 }
 
 pub fn app() {
@@ -22,12 +29,21 @@ pub fn app() {
 }
 
 fn init(database: Database) {
-  #(Model(database, []), effect.none())
+  #(Model(database, [], mode: RegEx), effect.none())
 }
 
 fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
   case msg {
-    Search(query) -> #(model, regex(model, query))
+    Search(query) ->
+      case model.mode {
+        Fuzzy -> #(model, fuzzy(model, query))
+        RegEx -> #(model, regex(model, query))
+      }
+    SelectMode(mode) -> {
+      let mode = mode_from_string(mode)
+      #(Model(..model, mode: mode, results: []), effect.none())
+    }
+
     SetResults(results) -> #(Model(..model, results: results), effect.none())
   }
 }
@@ -44,8 +60,15 @@ fn view(model: Model) {
               attribute.class(
                 "flex-none w-auto bg-white border border-teal-500 w-full p-3 rounded",
               ),
+              event.on_input(SelectMode),
             ],
-            [html.option([], "RegEx")],
+            [RegEx, Fuzzy]
+              |> list.map(fn(mode) {
+                html.option(
+                  [attribute.selected(model.mode == mode)],
+                  mode |> mode_to_string,
+                )
+              }),
           ),
           html.input([
             attribute.class(
@@ -90,5 +113,24 @@ fn regex(model: Model, string) -> Effect(Msg) {
       |> SetResults
       |> dispatch
     }
+  }
+}
+
+fn fuzzy(_model, _string) -> Effect(Msg) {
+  effect.none()
+}
+
+fn mode_from_string(mode: String) -> Mode {
+  case mode {
+    "RegEx" -> RegEx
+    "Fuzzy" -> Fuzzy
+    _ -> RegEx
+  }
+}
+
+fn mode_to_string(mode: Mode) {
+  case mode {
+    Fuzzy -> "Fuzzy"
+    RegEx -> "RegEx"
   }
 }
