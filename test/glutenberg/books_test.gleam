@@ -7,21 +7,21 @@ pub fn main() {
   gleeunit.main()
 }
 
-pub fn regex_find_test() {
+pub fn regexp_find_test() {
   let db = database.init()
 
   db
-  |> database.regex("the", False)
+  |> database.regexp("the", False)
   |> result.unwrap([])
   |> should.equal(["At the mountains of madness"])
 
   db
-  |> database.regex("The", False)
+  |> database.regexp("The", False)
   |> result.unwrap([])
   |> should.equal(["The call of Cthulhu", "The shadow over Innsmouth"])
 
   db
-  |> database.regex("[Tt]he", False)
+  |> database.regexp("[Tt]he", False)
   |> result.unwrap([])
   |> should.equal([
     "The call of Cthulhu", "At the mountains of madness",
@@ -29,11 +29,11 @@ pub fn regex_find_test() {
   ])
 }
 
-pub fn case_insensitive_regex_test() {
+pub fn case_insensitive_regexp_test() {
   let db = database.init()
 
   db
-  |> database.regex("the", True)
+  |> database.regexp("the", True)
   |> result.unwrap([])
   |> should.equal([
     "The call of Cthulhu", "At the mountains of madness",

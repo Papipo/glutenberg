@@ -2,7 +2,7 @@ import gleam/dict.{type Dict}
 import gleam/int
 import gleam/list
 import gleam/option.{type Option, None, Some}
-import gleam/regex
+import gleam/regexp
 import gleam/set.{type Set}
 import gleam/string
 import glevenshtein
@@ -50,15 +50,15 @@ pub fn init() {
   |> Database(index: index_from_list(books))
 }
 
-pub fn regex(
+pub fn regexp(
   database: Database,
   query: String,
   case_insensitive: Bool,
 ) -> Result(List(String), String) {
   let query =
-    regex.compile(
+    regexp.compile(
       query,
-      regex.Options(case_insensitive: case_insensitive, multi_line: False),
+      regexp.Options(case_insensitive: case_insensitive, multi_line: False),
     )
 
   case query {
@@ -68,7 +68,7 @@ pub fn regex(
 
       database.books
       |> dict.fold(results, fn(results, book_id, book) {
-        case regex.check(re, book.title) {
+        case regexp.check(re, book.title) {
           False -> results
           True -> dict.insert(results, book_id, 0)
         }
@@ -160,6 +160,6 @@ pub fn to_list(results: Results, database: Database) -> List(String) {
 }
 
 fn split_whitespace(str) {
-  let assert Ok(re) = regex.from_string("[ ]+")
-  regex.split(re, str)
+  let assert Ok(re) = regexp.from_string("[ ]+")
+  regexp.split(re, str)
 }

@@ -155,7 +155,7 @@ fn regex(model: Model) -> Effect(Msg) {
   use dispatch <- effect.from()
   case
     model.database
-    |> database.regex(model.query, model.case_insensitive)
+    |> database.regexp(model.query, model.case_insensitive)
   {
     Error(e) -> e |> SetError |> dispatch
     Ok(results) -> results |> SetResults |> dispatch
